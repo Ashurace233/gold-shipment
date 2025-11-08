@@ -29,14 +29,6 @@
         </div>
     </nav>
 
-    <!-- Anti-Phishing Security Notice -->
-    <div style="background-color: #fff3cd; border-bottom: 2px solid #ffc107; padding: 12px 0; text-align: center; font-size: 0.9rem;">
-        <div class="container">
-            <strong style="color: #856404;">🛡️ Security Notice:</strong>
-            <span style="color: #856404; margin-left: 8px;">Navis Pack & Ship will NEVER ask for your password, credit card details, or personal information via email or phone. Always verify emails are from @navispacknship.com. If you receive suspicious communications, contact us immediately at info@navispacknship.com</span>
-        </div>
-    </div>
-
     <section class="tracking-section">
         <div class="container">
             <h1>Track Your Shipment</h1>
@@ -141,7 +133,7 @@
                     <div class="footer-logo">
                         <img src="gg.jpg" alt="Navis Pack & Ship" class="logo-image">
                     </div>
-                    <p>Navis Pack & Ship is a specialized shipping company with over 30 years of experience, offering customized packing and shipping solutions for fragile, large, awkward, and valuable items.</p>
+                    <p>Navis Pack & Ship is a specialized shipping company with over 35 years of experience, offering customized packing and shipping solutions for fragile, large, awkward, and valuable items.</p>
                 </div>
                 
                 <div class="footer-section">
@@ -179,7 +171,7 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; 2024 Navis Pack & Ship. All rights reserved.</p>
+                <p>&copy; Since 1980 Navis Pack & Ship. All rights reserved.</p>
                 <div class="footer-links">
                     <a href="#">Privacy Policy</a>
                     <a href="#">Terms of Service</a>
@@ -191,6 +183,44 @@
     </footer>
 
     <script src="tracking.js"></script>
+
+    <script>
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Disable F12 and developer tools
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Disable text selection
+        document.onselectstart = function() {
+            return false;
+        };
+        
+        // Clear console periodically
+        setInterval(function() {
+            console.clear();
+        }, 1000);
+    </script>
 </body>
 </html>
 
