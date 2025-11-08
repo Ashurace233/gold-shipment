@@ -1,36 +1,39 @@
-// Shipment tracking locations from Florida to Australia
-// Shipment starts NOW from Florida and arrives on November 13, 2025
-const arrivalDate = new Date('2025-11-13T12:00:00'); // November 13, 2025, 12:00 PM
+// Shipment tracking locations from Florida to UK
+// Shipment starts NOW from Florida and arrives in 2 weeks
 const startDate = new Date(); // Start from today (NOW)
 startDate.setHours(12, 0, 0, 0); // Set to noon today
 
-// Calculate total days from now until arrival
-const totalDays = Math.ceil((arrivalDate - startDate) / (1000 * 60 * 60 * 24));
+// Calculate arrival date as 2 weeks (14 days) from start
+const arrivalDate = new Date(startDate);
+arrivalDate.setDate(arrivalDate.getDate() + 14); // Add 14 days (2 weeks)
+
+// Calculate total days from now until arrival (should be 14 days)
+const totalDays = 14;
 
 // Shipment details
 const shipmentDetails = {
     itemName: "Gold",
-    weight: "750 kg",
-    weightInKg: 750
+    weight: "300 kg",
+    weightInKg: 300
 };
 
 // Route locations with days from start (relative to today)
 // These percentages represent where in the journey each stop occurs
+// Atlantic shipping route from Florida to UK
 const routeSchedule = [
     { name: "Port of Miami Harbour, Florida, USA", lat: 25.7667, lng: -80.1667, status: "Origin", daysFromStart: 0 },
     { name: "Port Everglades, Florida, USA", lat: 26.0917, lng: -80.1281, status: "In Transit", daysFromStart: 1 },
-    { name: "Caribbean Sea", lat: 20.0000, lng: -75.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.13) },
-    { name: "Panama Canal, Panama", lat: 9.0800, lng: -79.6800, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.27) },
-    { name: "Pacific Ocean", lat: 5.0000, lng: -90.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.40) },
-    { name: "Pacific Ocean", lat: 10.0000, lng: -130.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.60) },
-    { name: "Hawaii, USA", lat: 21.3099, lng: -157.8581, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.73) },
-    { name: "Pacific Ocean", lat: -10.0000, lng: -165.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.83) },
-    { name: "Sydney, Australia", lat: -33.8688, lng: 151.2093, status: "Destination", daysFromStart: totalDays }
+    { name: "Bahamas Passage", lat: 26.0000, lng: -77.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.15) },
+    { name: "Atlantic Ocean (North)", lat: 32.0000, lng: -70.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.30) },
+    { name: "Mid-Atlantic", lat: 40.0000, lng: -50.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.50) },
+    { name: "North Atlantic", lat: 47.0000, lng: -30.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.70) },
+    { name: "Approaching UK Waters", lat: 51.0000, lng: -10.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.85) },
+    { name: "United Kingdom, UK", lat: 52.9548, lng: -1.1581, status: "Destination", daysFromStart: totalDays }
 ];
 
 // Build routeLocations array with actual dates calculated from startDate
 const routeLocations = routeSchedule.map((route, index) => {
-    // For the last location (Sydney), use the exact arrival date
+    // For the last location (UK), use the exact arrival date
     if (index === routeSchedule.length - 1) {
         return {
             ...route,
@@ -50,7 +53,7 @@ function formatDate(date) {
     return date.toLocaleDateString('en-US', options);
 }
 
-// Shipment starts from Florida TODAY and counts down to arrival on November 13, 2025
+// Shipment starts from Florida TODAY and counts down to arrival in 2 weeks
 // All dates are calculated relative to the current date (startDate = now)
 
 // Valid tracking IDs
@@ -95,7 +98,7 @@ function initMap() {
 
     L.marker([routeLocations[routeLocations.length - 1].lat, routeLocations[routeLocations.length - 1].lng])
         .addTo(map)
-        .bindPopup('Destination: Sydney, Australia');
+        .bindPopup('Destination: United Kingdom, UK');
 
     updateShipmentLocation();
 }
@@ -204,7 +207,7 @@ function updateTrackingInfo(location) {
         (location.status === 'Destination' ? 'completed' : 'active');
     }
 
-    // Calculate estimated time based on destination date (November 13, 2025)
+    // Calculate estimated time based on destination date (2 weeks from start)
     const now = new Date();
     const destinationTime = routeLocations[routeLocations.length - 1].date;
     const timeDiff = destinationTime - now;
@@ -316,7 +319,7 @@ function trackShipment() {
             document.getElementById('origin').textContent = routeLocations[0].name;
         }
         if (document.getElementById('destination')) {
-            document.getElementById('destination').textContent = routeLocations[routeLocations.length - 1].name;
+            document.getElementById('destination').textContent = '4 Brett close Hucknall, Nottingham ng156hh United Kingdom, UK';
         }
         
         trackingResults.style.display = 'block';
