@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Shipment - Navis Pack & Ship</title>
+    <link rel="icon" type="image/jpeg" href="tt.jpg">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                
+                <img src="gg.jpg" alt="Navis Pack & Ship" class="logo-image">
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="tracking.html" class="active">Track Shipment</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="tracking-section">
+        <div class="container">
+            <h1>Track Your Shipment</h1>
+            <div class="search-box">
+                <input type="text" id="trackingInput" placeholder="Enter tracking ID (e.g., XXX-XXX-XXXX)">
+                <button onclick="trackShipment()">Search</button>
+            </div>
+
+            <div id="loadingSpinner" class="loading-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Searching for shipment...</p>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;">
+                <div class="error-icon">❌</div>
+                <h3>Tracking ID Not Found</h3>
+                <p>The tracking ID you entered could not be found in our system.</p>
+                <p>Please check your tracking number and try again.</p>
+                <p><strong>Format:</strong> XXX-XXX-XXXX</p>
+            </div>
+
+            <div id="trackingResults" class="tracking-results" style="display: none;">
+                <div class="shipment-info">
+                    <div class="info-card">
+                        <h3>Shipment Details</h3>
+                        <p><strong>Tracking ID:</strong> <span id="trackingId"></span></p>
+                        <p><strong>Item Name:</strong> <span id="itemName" style="color: #FFD700; font-weight: bold;">Gold</span></p>
+                        <p><strong>Weight:</strong> <span id="itemWeight">750 kg</span></p>
+                        <p><strong>Status:</strong> <span id="status" class="status-badge"></span></p>
+                        <p><strong>Origin:</strong> <span id="origin">Port of Miami Harbour, Florida, USA</span></p>
+                        <p><strong>Destination:</strong> <span id="destination">Sydney, Australia</span></p>
+                        <p><strong>Estimated Arrival:</strong> <span id="estimatedTime"></span></p>
+                        <p><strong>Current Location:</strong> <span id="currentLocation"></span></p>
+                    </div>
+                </div>
+
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+
+                <div class="timeline">
+                    <h3>Shipment Timeline</h3>
+                    <div id="timeline"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="locations-section" style="padding: 3rem 0; background: white;">
+        <div class="container">
+            <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 2rem; color: #333;">Our Locations</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <strong>Miami, FL</strong>
+                        <p>Port of Miami Harbour<br>Miami, FL 33132<br>Phone: (305) 555-0100<br>Email: miami@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Memphis, TN</strong>
+                        <p>6075 E. Shelby Drive Ste 4<br>Memphis, TN 38141<br>Phone: (901) 800-2642<br>Email: memphis@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Phoenix, AZ</strong>
+                        <p>5002 S 40th St Ste L<br>Phoenix, AZ 85040-2962<br>Phone: (480) 354-7000<br>Email: phoenix@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Colorado Springs, CO</strong>
+                        <p>3005 Pennsylvania Ave<br>Colorado Springs, CO 80907<br>Phone: (719) 633-2988<br>Email: coloradosprings@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Morrisville, NC</strong>
+                        <p>2800 Perimeter Park Drive Ste A<br>Morrisville, NC 27560<br>Phone: (919) 832-9006<br>Email: morrisville@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Hayward, CA</strong>
+                        <p>19424 Cabot Blvd<br>Hayward, CA 94545<br>Phone: (510) 200-0370<br>Email: hayward@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Las Vegas, NV</strong>
+                        <p>6185 S Valley View Blvd Ste L<br>Las Vegas, NV 89118<br>Phone: (702) 494-9616<br>Email: lasvegas@gonavis.com</p>
+                    </div>
+
+                    <div class="contact-item">
+                        <strong>Salt Lake City & Boise, UT</strong>
+                        <p>3669 S Tk Ave<br>Boise, ID 83705<br>Phone: (208) 508-7785<br>Email: gary.colebrook@gonavis.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <img src="gg.jpg" alt="Navis Pack & Ship" class="logo-image">
+                    </div>
+                    <p>Navis Pack & Ship is a specialized shipping company with over 30 years of experience, offering customized packing and shipping solutions for fragile, large, awkward, and valuable items.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="tracking.html">Track Shipment</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Our Services</h3>
+                    <ul>
+                        <li><a href="#">Custom Boxing & Crating</a></li>
+                        <li><a href="#">Professional Packing</a></li>
+                        <li><a href="#">White Glove Service</a></li>
+                        <li><a href="#">Pickup & Delivery</a></li>
+                        <li><a href="#">Secure Storage</a></li>
+                        <li><a href="#">International Shipping</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Contact Information</h3>
+                    <div class="footer-contact-info">
+                        <p><strong>Email:</strong> <span>info@gonavis.com</span></p>
+                        <p><strong>Phone:</strong> <span>1-800-NAVIS-01</span></p>
+                        <p><strong>Hours:</strong> <span>Mon-Fri: 9AM-6PM EST</span></p>
+                    </div>
+                    <p style="margin-top: 1rem; color: #888; font-size: 0.9rem;">
+                        Serving customers across the United States with locations in multiple states.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 Navis Pack & Ship. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Shipping Policy</a>
+                    <a href="#">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="tracking.js"></script>
+</body>
+</html>
+
