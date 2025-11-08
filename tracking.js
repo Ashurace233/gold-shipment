@@ -76,31 +76,80 @@ let updateInterval;
 
 // Initialize map
 function initMap() {
-    map = L.map('map').setView([10.0, -120.0], 3);
+    // Check if map element exists
+    const mapElement = document.getElementById('map');
+    if (!mapElement) {
+        console.error('Map element not found');
+        return;
+    }
+
+    // Check if Leaflet is loaded
+    if (typeof L === 'undefined') {
+        console.error('Leaflet library not loaded');
+        return;
+    }
+
+    // Ensure map element is visible and has dimensions
+    const container = mapElement.parentElement;
+    if (container && container.style.display === 'none') {
+        container.style.display = 'block';
+    }
     
+    // Force display of map element
+    mapElement.style.display = 'block';
+    mapElement.style.width = '100%';
+    mapElement.style.height = '500px';
+
+    // Remove any existing map instance
+    if (map) {
+        map.remove();
+        map = null;
+    }
+
+    // Center map on Atlantic route (between Florida and UK)
+    try {
+        map = L.map('map', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView([40.0, -40.0], 3);
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        return;
+    }
+    
+    // Add tile layer with error handling
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     }).addTo(map);
 
-    // Draw route line
-    const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
-    routeLine = L.polyline(routeCoords, {
-        color: '#667eea',
-        weight: 3,
-        opacity: 0.7
-    }).addTo(map);
+    // Wait a moment for tiles to load, then draw route
+    setTimeout(() => {
+        // Draw route line
+        const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
+        routeLine = L.polyline(routeCoords, {
+            color: '#667eea',
+            weight: 3,
+            opacity: 0.7
+        }).addTo(map);
 
-    // Add origin and destination markers
-    L.marker([routeLocations[0].lat, routeLocations[0].lng])
-        .addTo(map)
-        .bindPopup('Origin: Port of Miami Harbour, Florida, USA')
-        .openPopup();
+        // Add origin and destination markers
+        L.marker([routeLocations[0].lat, routeLocations[0].lng])
+            .addTo(map)
+            .bindPopup('Origin: Port of Miami Harbour, Florida, USA');
 
-    L.marker([routeLocations[routeLocations.length - 1].lat, routeLocations[routeLocations.length - 1].lng])
-        .addTo(map)
-        .bindPopup('Destination: United Kingdom, UK');
+        L.marker([routeLocations[routeLocations.length - 1].lat, routeLocations[routeLocations.length - 1].lng])
+            .addTo(map)
+            .bindPopup('Destination: United Kingdom, UK');
 
-    updateShipmentLocation();
+        // Fit map to show entire route
+        if (routeCoords.length > 0) {
+            map.fitBounds(routeCoords, { padding: [50, 50] });
+        }
+
+        updateShipmentLocation();
+    }, 200);
 }
 
 // Calculate current location based on real date
@@ -330,12 +379,33 @@ function trackShipment() {
         }
 
         // Initialize map if not already done
-        if (!map) {
-            initMap();
-        } else {
-            // Reset to current location based on real date
-            updateShipmentLocation();
-        }
+        // Use setTimeout to ensure container is visible before initializing map
+        setTimeout(() => {
+            if (!map) {
+                initMap();
+                // Invalidate size multiple times to ensure proper rendering
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                        // Invalidate again after a short delay
+                        setTimeout(() => {
+                            if (map) {
+                                map.invalidateSize();
+                            }
+                        }, 200);
+                    }
+                }, 300);
+            } else {
+                // Reset to current location based on real date
+                map.invalidateSize(); // Ensure map size is correct
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                        updateShipmentLocation();
+                    }
+                }, 100);
+            }
+        }, 100);
 
         // Update location periodically based on real date
         updateInterval = setInterval(() => {
