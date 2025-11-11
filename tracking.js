@@ -10,6 +10,19 @@ arrivalDate.setDate(arrivalDate.getDate() + 14); // Add 14 days (2 weeks)
 // Calculate total days from now until arrival (should be 14 days)
 const totalDays = 14;
 
+// Optional: simulate progress along the journey (0 to 1). Set to null to use real time.
+const USE_SIMULATED_PROGRESS = true;
+const SIMULATED_PROGRESS = 0.20; // 20%
+function getNow() {
+    if (USE_SIMULATED_PROGRESS === true && typeof SIMULATED_PROGRESS === 'number' && SIMULATED_PROGRESS >= 0 && SIMULATED_PROGRESS <= 1) {
+        const startMs = startDate.getTime();
+        const endMs = arrivalDate.getTime();
+        const simulatedMs = startMs + (endMs - startMs) * SIMULATED_PROGRESS;
+        return new Date(simulatedMs);
+    }
+    return new Date();
+}
+
 // Shipment details
 const shipmentDetails = {
     itemName: "Gold",
@@ -31,21 +44,22 @@ const routeSchedule = [
     { name: "United Kingdom, UK", lat: 52.9548, lng: -1.1581, status: "Destination", daysFromStart: totalDays }
 ];
 
-// Build routeLocations array with actual dates calculated from startDate
-const routeLocations = routeSchedule.map((route, index) => {
-    // For the last location (UK), use the exact arrival date
-    if (index === routeSchedule.length - 1) {
-        return {
-            ...route,
-            date: arrivalDate
-        };
-    }
-    // For all other locations, calculate date from startDate
-    return {
-        ...route,
-        date: new Date(startDate.getTime() + route.daysFromStart * 24 * 60 * 60 * 1000)
-    };
-});
+// Build routeLocations array from the current routeSchedule
+function buildRouteLocations() {
+	return routeSchedule.map((route, index) => {
+		if (index === routeSchedule.length - 1) {
+			return {
+				...route,
+				date: arrivalDate
+			};
+		}
+		return {
+			...route,
+			date: new Date(startDate.getTime() + route.daysFromStart * 24 * 60 * 60 * 1000)
+		};
+	});
+}
+let routeLocations = buildRouteLocations();
 
 // Format date for display
 function formatDate(date) {
@@ -73,6 +87,10 @@ let marker;
 let routeLine;
 let currentLocationIndex = 0;
 let updateInterval;
+const FORCE_TO_FREEPORT = false;
+const FREEPORT_COORDS = { lat: 26.5333, lng: -78.7000, name: "Freeport, Grand Bahama, Bahamas", status: "Reached Freeport" };
+let traveledLine;
+let upcomingLine;
 
 // Initialize map
 function initMap() {
@@ -126,13 +144,8 @@ function initMap() {
 
     // Wait a moment for tiles to load, then draw route
     setTimeout(() => {
-        // Draw route line
-        const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
-        routeLine = L.polyline(routeCoords, {
-            color: '#667eea',
-            weight: 3,
-            opacity: 0.7
-        }).addTo(map);
+		// Prepare full route coords (used for fitting bounds and future splitting)
+		const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
 
         // Add origin and destination markers
         L.marker([routeLocations[0].lat, routeLocations[0].lng])
@@ -145,8 +158,22 @@ function initMap() {
 
         // Fit map to show entire route
         if (routeCoords.length > 0) {
-            map.fitBounds(routeCoords, { padding: [50, 50] });
+			map.fitBounds(routeCoords, { padding: [50, 50] });
         }
+
+		// Initialize split route lines (traveled: solid, upcoming: dashed)
+		traveledLine = L.polyline([], {
+			color: '#1f78ff',
+			weight: 4,
+			opacity: 0.9
+		}).addTo(map);
+
+		upcomingLine = L.polyline([], {
+			color: '#1f78ff',
+			weight: 4,
+			opacity: 0.6,
+			dashArray: '8,8'
+		}).addTo(map);
 
         updateShipmentLocation();
     }, 200);
@@ -154,7 +181,7 @@ function initMap() {
 
 // Calculate current location based on real date
 function calculateCurrentLocation() {
-    const now = new Date();
+    const now = getNow();
     let currentIndex = 0;
     
     // If current date is before shipment start, show origin
@@ -181,7 +208,9 @@ function calculateCurrentLocation() {
 
 // Update shipment location based on real dates with smooth interpolation
 function updateShipmentLocation() {
-    const now = new Date();
+	// Rebuild route from current schedule so any changes take effect immediately
+	routeLocations = buildRouteLocations();
+    const now = getNow();
     currentLocationIndex = calculateCurrentLocation();
     
     if (currentLocationIndex >= routeLocations.length) {
@@ -219,6 +248,42 @@ function updateShipmentLocation() {
         displayLocation = currentLocation;
     }
     
+	// Force current location to Freeport if requested
+	if (FORCE_TO_FREEPORT) {
+		currentLocation = {
+			lat: FREEPORT_COORDS.lat,
+			lng: FREEPORT_COORDS.lng,
+			name: FREEPORT_COORDS.name,
+			status: FREEPORT_COORDS.status
+		};
+		displayLocation = currentLocation;
+	}
+	
+	// Update split route so lines correspond to the marker position
+	(function updateSplitRoute() {
+		// Build traveled coords up to current index
+		const traveledCoords = [];
+		for (let i = 0; i <= currentLocationIndex; i++) {
+			traveledCoords.push([routeLocations[i].lat, routeLocations[i].lng]);
+		}
+		// Ensure endpoint equals the current marker location (so line meets the red dot)
+		if (traveledCoords.length === 0) {
+			traveledCoords.push([currentLocation.lat, currentLocation.lng]);
+		} else {
+			traveledCoords[traveledCoords.length - 1] = [currentLocation.lat, currentLocation.lng];
+		}
+
+		// Build upcoming coords starting at current location
+		const upcomingCoords = [];
+		upcomingCoords.push([currentLocation.lat, currentLocation.lng]);
+		for (let i = currentLocationIndex + 1; i < routeLocations.length; i++) {
+			upcomingCoords.push([routeLocations[i].lat, routeLocations[i].lng]);
+		}
+
+		if (traveledLine) traveledLine.setLatLngs(traveledCoords);
+		if (upcomingLine) upcomingLine.setLatLngs(upcomingCoords);
+	})();
+
     // Remove existing marker
     if (marker) {
         map.removeLayer(marker);
