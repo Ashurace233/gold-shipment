@@ -12,7 +12,7 @@ const totalDays = 14;
 
 // Optional: simulate progress along the journey (0 to 1). Set to null to use real time.
 const USE_SIMULATED_PROGRESS = true;
-const SIMULATED_PROGRESS = 0.20; // 20%
+const SIMULATED_PROGRESS = 0.40; // 40%
 function getNow() {
     if (USE_SIMULATED_PROGRESS === true && typeof SIMULATED_PROGRESS === 'number' && SIMULATED_PROGRESS >= 0 && SIMULATED_PROGRESS <= 1) {
         const startMs = startDate.getTime();
@@ -370,7 +370,7 @@ function updateTimeline() {
             <div class="timeline-icon">${icon}</div>
             <div class="timeline-content">
                 <h4>${loc.name}</h4>
-                <p>${loc.status} - ${formatDate(loc.date)}</p>
+                <p>${loc.status}</p>
             </div>
         `;
 
