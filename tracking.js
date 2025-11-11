@@ -89,8 +89,38 @@ let currentLocationIndex = 0;
 let updateInterval;
 const FORCE_TO_FREEPORT = false;
 const FREEPORT_COORDS = { lat: 26.5333, lng: -78.7000, name: "Freeport, Grand Bahama, Bahamas", status: "Reached Freeport" };
+// Australian port coordinates for issue scenario
+const AUSTRALIA_PORT_COORDS = { lat: -33.8688, lng: 151.2093, name: "Port of Sydney, Australia", status: "Issue - Contact Management" };
 let traveledLine;
 let upcomingLine;
+
+// Check if current time is tomorrow around 7am (between 6:30am and 7:30am)
+function isTomorrowAround7AM() {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if it's tomorrow (date is one day after today)
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const isTomorrow = now.getDate() === tomorrow.getDate() && 
+                       now.getMonth() === tomorrow.getMonth() && 
+                       now.getFullYear() === tomorrow.getFullYear();
+    
+    if (!isTomorrow) {
+        return false;
+    }
+    
+    // Check if time is around 7am (between 6:30am and 7:30am)
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+    const targetTime = 7 * 60; // 7:00 AM in minutes
+    const window = 30; // 30 minutes window
+    
+    return Math.abs(timeInMinutes - targetTime) <= window;
+}
 
 // Initialize map
 function initMap() {
@@ -259,6 +289,18 @@ function updateShipmentLocation() {
 		displayLocation = currentLocation;
 	}
 	
+	// Check if it's tomorrow around 7am - if so, show ship at Australia port with warning
+	const hasIssue = isTomorrowAround7AM();
+	if (hasIssue) {
+		currentLocation = {
+			lat: AUSTRALIA_PORT_COORDS.lat,
+			lng: AUSTRALIA_PORT_COORDS.lng,
+			name: AUSTRALIA_PORT_COORDS.name,
+			status: AUSTRALIA_PORT_COORDS.status
+		};
+		displayLocation = currentLocation;
+	}
+	
 	// Update split route so lines correspond to the marker position
 	(function updateSplitRoute() {
 		// Build traveled coords up to current index
@@ -308,6 +350,20 @@ function updateShipmentLocation() {
     // Update UI
     updateTrackingInfo(displayLocation);
     updateTimeline();
+    updateWarningMessage();
+}
+
+// Show/hide warning message based on issue condition
+function updateWarningMessage() {
+    const warningDiv = document.getElementById('issueWarning');
+    if (warningDiv) {
+        const hasIssue = isTomorrowAround7AM();
+        if (hasIssue) {
+            warningDiv.style.display = 'block';
+        } else {
+            warningDiv.style.display = 'none';
+        }
+    }
 }
 
 // Update tracking information
@@ -437,6 +493,9 @@ function trackShipment() {
         }
         
         trackingResults.style.display = 'block';
+        
+        // Update warning message if needed
+        updateWarningMessage();
 
         // Clear existing interval
         if (updateInterval) {
