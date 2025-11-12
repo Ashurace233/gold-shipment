@@ -35,29 +35,29 @@ const shipmentDetails = {
 // Atlantic shipping route from Florida to UK
 const routeSchedule = [
     { name: "Port of Miami Harbour, Florida, USA", lat: 25.7667, lng: -80.1667, status: "Origin", daysFromStart: 0 },
-    { name: "Port Everglades, Florida, USA", lat: 26.0917, lng: -80.1281, status: "In Transit", daysFromStart: 1 },
-    { name: "Bahamas Passage", lat: 26.0000, lng: -77.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.15) },
-    { name: "Atlantic Ocean (North)", lat: 32.0000, lng: -70.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.30) },
-    { name: "Mid-Atlantic", lat: 40.0000, lng: -50.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.50) },
-    { name: "North Atlantic", lat: 47.0000, lng: -30.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.70) },
-    { name: "Approaching UK Waters", lat: 51.0000, lng: -10.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.85) },
-    { name: "United Kingdom, UK", lat: 52.9548, lng: -1.1581, status: "Destination", daysFromStart: totalDays }
+    { name: "Bahamas Channel", lat: 24.3000, lng: -75.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.10) },
+    { name: "Panama Canal, Panama", lat: 9.0800, lng: -79.6800, status: "Canal Transit", daysFromStart: Math.floor(totalDays * 0.20) },
+    { name: "Eastern Pacific Ocean", lat: -5.0000, lng: -110.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.40) },
+    { name: "Central Pacific Gyre", lat: -15.0000, lng: -150.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.55) },
+    { name: "South Pacific Ocean", lat: -25.0000, lng: -180.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.70) },
+    { name: "Tasman Sea Approach", lat: -35.0000, lng: -195.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.85) },
+    { name: "Sydney, Australia", lat: -33.8688, lng: -208.7907, status: "Destination", daysFromStart: totalDays }
 ];
 
 // Build routeLocations array from the current routeSchedule
 function buildRouteLocations() {
 	return routeSchedule.map((route, index) => {
-		if (index === routeSchedule.length - 1) {
-			return {
-				...route,
-				date: arrivalDate
-			};
-		}
-		return {
-			...route,
-			date: new Date(startDate.getTime() + route.daysFromStart * 24 * 60 * 60 * 1000)
-		};
-	});
+    if (index === routeSchedule.length - 1) {
+        return {
+            ...route,
+            date: arrivalDate
+        };
+    }
+    return {
+        ...route,
+        date: new Date(startDate.getTime() + route.daysFromStart * 24 * 60 * 60 * 1000)
+    };
+});
 }
 let routeLocations = buildRouteLocations();
 
@@ -87,12 +87,22 @@ let marker;
 let routeLine;
 let currentLocationIndex = 0;
 let updateInterval;
+let userInteractedWithMap = false;
+let lastMapInteractionTime = 0;
+const MAP_RECENTER_TIMEOUT = 15000; // 15 seconds of inactivity before auto recentring
 const FORCE_TO_FREEPORT = false;
 const FREEPORT_COORDS = { lat: 26.5333, lng: -78.7000, name: "Freeport, Grand Bahama, Bahamas", status: "Reached Freeport" };
 // Australian port coordinates for issue scenario
 const AUSTRALIA_PORT_COORDS = { lat: -33.8688, lng: 151.2093, name: "Port of Sydney, Australia", status: "Issue - Contact Management" };
 let traveledLine;
 let upcomingLine;
+let simulateIssueOverride = true;
+let simulationControlsInitialized = false;
+let plannedRouteLine;
+
+function shouldSimulateIssue() {
+    return simulateIssueOverride || isTomorrowAround7AM();
+}
 
 // Check if current time is tomorrow around 7am (between 6:30am and 7:30am)
 function isTomorrowAround7AM() {
@@ -165,6 +175,13 @@ function initMap() {
         return;
     }
     
+    const markInteraction = () => {
+        userInteractedWithMap = true;
+        lastMapInteractionTime = Date.now();
+    };
+    map.on('movestart', markInteraction);
+    map.on('zoomstart', markInteraction);
+
     // Add tile layer with error handling
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
@@ -175,21 +192,32 @@ function initMap() {
     // Wait a moment for tiles to load, then draw route
     setTimeout(() => {
 		// Prepare full route coords (used for fitting bounds and future splitting)
-		const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
+    const routeCoords = routeLocations.map(loc => [loc.lat, loc.lng]);
 
-        // Add origin and destination markers
-        L.marker([routeLocations[0].lat, routeLocations[0].lng])
-            .addTo(map)
+    const plannedRouteCoords = plannedRouteSchedule.map(loc => [loc.lat, loc.lng]);
+    const allCoords = routeCoords.concat(plannedRouteCoords);
+
+    // Add origin and destination markers
+    L.marker([routeLocations[0].lat, routeLocations[0].lng])
+        .addTo(map)
             .bindPopup('Origin: Port of Miami Harbour, Florida, USA');
 
-        L.marker([routeLocations[routeLocations.length - 1].lat, routeLocations[routeLocations.length - 1].lng])
-            .addTo(map)
-            .bindPopup('Destination: United Kingdom, UK');
+    L.marker([routeLocations[routeLocations.length - 1].lat, routeLocations[routeLocations.length - 1].lng])
+        .addTo(map)
+            .bindPopup('Destination: Port of Sydney, Australia');
 
-        // Fit map to show entire route
-        if (routeCoords.length > 0) {
-			map.fitBounds(routeCoords, { padding: [50, 50] });
-        }
+    plannedRouteLine = L.polyline(plannedRouteCoords, {
+        color: '#ff9f1c',
+        weight: 3,
+        opacity: 0.8,
+        dashArray: '6, 10',
+        interactive: false
+    }).addTo(map);
+
+    // Fit map to show entire route
+    if (allCoords.length > 0) {
+        map.fitBounds(allCoords, { padding: [50, 50] });
+    }
 
 		// Initialize split route lines (traveled: solid, upcoming: dashed)
 		traveledLine = L.polyline([], {
@@ -205,7 +233,7 @@ function initMap() {
 			dashArray: '8,8'
 		}).addTo(map);
 
-        updateShipmentLocation();
+    updateShipmentLocation();
     }, 200);
 }
 
@@ -289,8 +317,8 @@ function updateShipmentLocation() {
 		displayLocation = currentLocation;
 	}
 	
-	// Check if it's tomorrow around 7am - if so, show ship at Australia port with warning
-	const hasIssue = isTomorrowAround7AM();
+	// Check if issue condition should be simulated or triggered
+	const hasIssue = shouldSimulateIssue();
 	if (hasIssue) {
 		currentLocation = {
 			lat: AUSTRALIA_PORT_COORDS.lat,
@@ -299,6 +327,7 @@ function updateShipmentLocation() {
 			status: AUSTRALIA_PORT_COORDS.status
 		};
 		displayLocation = currentLocation;
+		currentLocationIndex = routeLocations.length - 1;
 	}
 	
 	// Update split route so lines correspond to the marker position
@@ -325,7 +354,7 @@ function updateShipmentLocation() {
 		if (traveledLine) traveledLine.setLatLngs(traveledCoords);
 		if (upcomingLine) upcomingLine.setLatLngs(upcomingCoords);
 	})();
-
+    
     // Remove existing marker
     if (marker) {
         map.removeLayer(marker);
@@ -345,24 +374,74 @@ function updateShipmentLocation() {
 
     // Update map view - zoom out slightly to show more of the route
     const zoomLevel = currentLocationIndex >= routeLocations.length - 1 ? 5 : 4;
-    map.setView([currentLocation.lat, currentLocation.lng], zoomLevel);
+    const nowTime = Date.now();
+    const shouldRecenter = !userInteractedWithMap || (nowTime - lastMapInteractionTime) > MAP_RECENTER_TIMEOUT;
+    if (shouldRecenter) {
+        map.setView([currentLocation.lat, currentLocation.lng], zoomLevel);
+        userInteractedWithMap = false;
+    }
 
     // Update UI
     updateTrackingInfo(displayLocation);
     updateTimeline();
     updateWarningMessage();
+    updateSimulationControls();
 }
 
 // Show/hide warning message based on issue condition
 function updateWarningMessage() {
     const warningDiv = document.getElementById('issueWarning');
     if (warningDiv) {
-        const hasIssue = isTomorrowAround7AM();
+        const hasIssue = shouldSimulateIssue();
         if (hasIssue) {
-            warningDiv.style.display = 'block';
+            warningDiv.classList.remove('hidden');
         } else {
-            warningDiv.style.display = 'none';
+            warningDiv.classList.add('hidden');
         }
+    }
+}
+
+function initSimulationControls() {
+    if (simulationControlsInitialized) {
+        return;
+    }
+
+    const simulateBtn = document.getElementById('simulateIssueBtn');
+    const clearBtn = document.getElementById('clearIssueBtn');
+    if (!simulateBtn || !clearBtn) {
+        return;
+    }
+
+    simulateBtn.addEventListener('click', () => toggleIssueSimulation(true));
+    clearBtn.addEventListener('click', () => toggleIssueSimulation(false));
+
+    simulationControlsInitialized = true;
+    updateSimulationControls();
+}
+
+function updateSimulationControls() {
+    const simulateBtn = document.getElementById('simulateIssueBtn');
+    const clearBtn = document.getElementById('clearIssueBtn');
+    if (!simulateBtn || !clearBtn) {
+        return;
+    }
+
+    if (shouldSimulateIssue()) {
+        simulateBtn.classList.add('hidden');
+        clearBtn.classList.remove('hidden');
+    } else {
+        simulateBtn.classList.remove('hidden');
+        clearBtn.classList.add('hidden');
+    }
+}
+
+function toggleIssueSimulation(forceOn) {
+    simulateIssueOverride = !!forceOn;
+    updateSimulationControls();
+    updateWarningMessage();
+
+    if (map) {
+        updateShipmentLocation();
     }
 }
 
@@ -494,6 +573,9 @@ function trackShipment() {
         
         trackingResults.style.display = 'block';
         
+        initSimulationControls();
+        updateSimulationControls();
+
         // Update warning message if needed
         updateWarningMessage();
 
@@ -505,8 +587,8 @@ function trackShipment() {
         // Initialize map if not already done
         // Use setTimeout to ensure container is visible before initializing map
         setTimeout(() => {
-            if (!map) {
-                initMap();
+        if (!map) {
+            initMap();
                 // Invalidate size multiple times to ensure proper rendering
                 setTimeout(() => {
                     if (map) {
@@ -519,14 +601,14 @@ function trackShipment() {
                         }, 200);
                     }
                 }, 300);
-            } else {
-                // Reset to current location based on real date
+        } else {
+            // Reset to current location based on real date
                 map.invalidateSize(); // Ensure map size is correct
                 setTimeout(() => {
                     if (map) {
                         map.invalidateSize();
-                        updateShipmentLocation();
-                    }
+            updateShipmentLocation();
+        }
                 }, 100);
             }
         }, 100);

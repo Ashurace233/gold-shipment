@@ -51,12 +51,17 @@
             </div>
 
             <div id="trackingResults" class="tracking-results" style="display: none;">
-                <div id="issueWarning" class="warning-message" style="display: none;">
+                <div id="issueWarning" class="warning-message hidden">
                     <div class="warning-icon">⚠️</div>
                     <div class="warning-content">
                         <h3>⚠️ Issue Detected</h3>
                         <p><strong>There is an issue with this shipment. Please contact management immediately.</strong></p>
                     </div>
+                </div>
+
+                <div class="simulation-controls">
+                    <button id="simulateIssueBtn" type="button" class="simulation-button simulate"></button>
+                    <button id="clearIssueBtn" type="button" class="simulation-button clear"></button>
                 </div>
 
                 <div class="shipment-info">
