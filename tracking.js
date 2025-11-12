@@ -32,7 +32,7 @@ const shipmentDetails = {
 
 // Route locations with days from start (relative to today)
 // These percentages represent where in the journey each stop occurs
-// Atlantic shipping route from Florida to UK
+// Actual diversion route from Florida to Sydney, Australia
 const routeSchedule = [
     { name: "Port of Miami Harbour, Florida, USA", lat: 25.7667, lng: -80.1667, status: "Origin", daysFromStart: 0 },
     { name: "Bahamas Channel", lat: 24.5000, lng: -75.5000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.10) },
@@ -43,6 +43,16 @@ const routeSchedule = [
     { name: "South Pacific Ocean", lat: -25.0000, lng: 170.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.80) },
     { name: "Tasman Sea Approach", lat: -34.0000, lng: 160.0000, status: "In Transit", daysFromStart: Math.floor(totalDays * 0.92) },
     { name: "Port of Sydney, Australia", lat: -33.8688, lng: 151.2093, status: "Destination", daysFromStart: totalDays }
+];
+
+// Planned UK delivery milestones (used for the timeline display)
+const plannedTimelineSchedule = [
+    { name: "Port of Miami Harbour, Florida, USA", status: "Origin", daysFromStart: 0 },
+    { name: "Port Everglades, Florida, USA", status: "Departure Confirmed", daysFromStart: 1 },
+    { name: "Bahamas Passage", status: "In Transit", daysFromStart: Math.floor(totalDays * 0.20) },
+    { name: "Mid-Atlantic Shipping Lane", status: "In Transit", daysFromStart: Math.floor(totalDays * 0.40) },
+    { name: "Approaching UK Waters", status: "Planned Arrival Window", daysFromStart: Math.floor(totalDays * 0.65) },
+    { name: "4 Brett Close, Hucknall, Nottingham, UK", status: "Scheduled Delivery", daysFromStart: totalDays }
 ];
 
 // Build routeLocations array from the current routeSchedule
@@ -61,6 +71,19 @@ function buildRouteLocations() {
 });
 }
 let routeLocations = buildRouteLocations();
+
+function buildPlannedTimelineLocations() {
+    return plannedTimelineSchedule.map((stop, index) => {
+        const date = index === plannedTimelineSchedule.length - 1
+            ? arrivalDate
+            : new Date(startDate.getTime() + stop.daysFromStart * 24 * 60 * 60 * 1000);
+        return {
+            ...stop,
+            date
+        };
+    });
+}
+let plannedTimelineLocations = buildPlannedTimelineLocations();
 
 // Format date for display
 function formatDate(date) {
@@ -245,6 +268,7 @@ function calculateCurrentLocation() {
 function updateShipmentLocation() {
 	// Rebuild route from current schedule so any changes take effect immediately
 	routeLocations = buildRouteLocations();
+    plannedTimelineLocations = buildPlannedTimelineLocations();
     const now = getNow();
     currentLocationIndex = calculateCurrentLocation();
     
@@ -429,25 +453,43 @@ function updateTimeline() {
     const timeline = document.getElementById('timeline');
     timeline.innerHTML = '';
 
-    routeLocations.forEach((loc, index) => {
+    if (!plannedTimelineLocations || plannedTimelineLocations.length === 0) {
+        return;
+    }
+
+    const now = getNow();
+    let currentPlannedIndex = 0;
+    for (let i = 0; i < plannedTimelineLocations.length; i++) {
+        if (now >= plannedTimelineLocations[i].date) {
+            currentPlannedIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    plannedTimelineLocations.forEach((loc, index) => {
         const timelineItem = document.createElement('div');
         timelineItem.className = 'timeline-item';
         
-        if (index < currentLocationIndex) {
+        if (index < currentPlannedIndex) {
             timelineItem.classList.add('completed');
-        } else if (index === currentLocationIndex) {
+        } else if (index === currentPlannedIndex) {
             timelineItem.classList.add('active');
         }
 
         const icon = index === 0 ? '🚢' : 
-                    index === routeLocations.length - 1 ? '✅' : 
-                    index < currentLocationIndex ? '✓' : '📍';
+                    index === plannedTimelineLocations.length - 1 ? '🏁' : 
+                    index < currentPlannedIndex ? '✓' : '📍';
+
+        const statusText = index === plannedTimelineLocations.length - 1 && shouldSimulateIssue()
+            ? 'Delayed – Issue Detected'
+            : `${loc.status} - ${formatDate(loc.date)}`;
 
         timelineItem.innerHTML = `
             <div class="timeline-icon">${icon}</div>
             <div class="timeline-content">
                 <h4>${loc.name}</h4>
-                <p>${loc.status}</p>
+                <p>${statusText}</p>
             </div>
         `;
 
